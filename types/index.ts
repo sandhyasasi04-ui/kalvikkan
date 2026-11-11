@@ -36,6 +36,7 @@ export interface StudentDocument {
   };
   status: 'Verified' | 'Pending Review';
   fileName: string;
+  mimeType?: string;
 }
 
 export interface Student {

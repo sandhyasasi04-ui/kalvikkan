@@ -1,12 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import useRouter from 'next/navigation';
 import { Student } from '@/types';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { ArrowUpRight, ArrowDownRight, Minus, Eye, AlertTriangle, MessageSquare } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Minus, Eye, AlertTriangle, MessageSquare, Images } from 'lucide-react';
 import { useRouter as useNextRouter } from 'next/navigation';
 
 interface StudentTableProps {
@@ -108,6 +107,15 @@ export const StudentTable: React.FC<StudentTableProps> = ({
                       className="px-2.5 py-1 text-xs"
                     >
                       <Eye className="w-3.5 h-3.5 mr-1" /> View
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => router.push(`/gallery?studentId=${encodeURIComponent(st.id)}`)}
+                      className="px-2.5 py-1 text-xs"
+                      title={`Open ${st.name}'s gallery`}
+                    >
+                      <Images className="w-3.5 h-3.5 mr-1" /> Gallery
                     </Button>
                     {onOpenInterventionModal && (
                       <Button

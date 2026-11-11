@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   Users,
+  Images,
   BrainCircuit,
   AlertTriangle,
   BarChart3,
@@ -43,6 +44,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen, onO
   const navItems = [
     { name: 'Dashboard', href: getDashboardPath(), icon: LayoutDashboard },
     { name: 'Students Directory', href: '/students', icon: Users },
+    { name: 'Student Galleries', href: '/gallery', icon: Images },
     { name: 'AI Prediction', href: '/predict', icon: BrainCircuit },
     { name: 'Intervention Center', href: '/interventions', icon: AlertTriangle },
     { name: 'Analytics & Trends', href: '/analytics', icon: BarChart3 },

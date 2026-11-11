@@ -25,6 +25,7 @@ In higher education institutions, struggling students often receive academic hel
 9. **Kalvikkan AI Interactive Assistant**: Drawer chatbot providing instant answers on student performance, weak subject analysis, and study advice.
 10. **Institutional Analytics**: Responsive Recharts visualizations for cohort trends, risk distribution donut charts, and department comparisons.
 11. **Dark & Light Theme**: Built-in appearance toggle with persistent `localStorage` support.
+12. **Student Achievement Gallery**: Browse each student's uploaded certificates and other credentials, open or download original files, and upload multiple images at once.
 
 ---
 
@@ -34,8 +35,10 @@ In higher education institutions, struggling students often receive academic hel
 - **Styling**: Tailwind CSS
 - **Icons**: Lucide React (`lucide-react`)
 - **Charts**: Recharts (`recharts`)
-- **Persistence**: React State & `localStorage`
+- **Persistence**: React State & `localStorage` for app records; IndexedDB for uploaded files
 - **Deployment**: Vercel ready (Zero backend configuration required)
+
+> **Storage scope:** This demo stores records and uploaded files in the current browser. Faculty using a different browser or device will not see those files until a shared backend and database are configured.
 
 ---
 

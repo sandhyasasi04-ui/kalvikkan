@@ -658,17 +658,21 @@ export function useKalvikkanStore() {
     setStoredTheme(nextTheme);
   };
 
-  const uploadStudentDocument = (studentId: string, doc: StudentDocument) => {
-    const updated = students.map((st) => {
-      if (st.id === studentId) {
-        return updateStudentWithExtractedMetrics(st, doc);
-      }
-      return st;
-    });
+  const uploadStudentDocuments = (studentId: string, documents: StudentDocument[]) => {
+    if (!documents.length) return;
+    const updated = students.map((student) =>
+      student.id === studentId
+        ? documents.reduce(updateStudentWithExtractedMetrics, student)
+        : student
+    );
     setStudents(updated);
     if (typeof window !== 'undefined') {
       localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(updated));
     }
+  };
+
+  const uploadStudentDocument = (studentId: string, doc: StudentDocument) => {
+    uploadStudentDocuments(studentId, [doc]);
   };
 
   const batchUpdateStudents = (parsedRows: Partial<Student>[]) => {
@@ -794,6 +798,7 @@ export function useKalvikkanStore() {
     addFaculty,
     registerUser,
     uploadStudentDocument,
+    uploadStudentDocuments,
     batchUpdateStudents,
     interventions,
     notifications,

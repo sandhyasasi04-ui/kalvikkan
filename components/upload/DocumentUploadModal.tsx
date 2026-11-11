@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Student, StudentDocument } from '@/types';
 import { parseUploadedDocument, ExtractedExtractionResult } from '@/lib/documentExtractor';
 import { useKalvikkanStore } from '@/lib/store';
+import { saveDocumentFile } from '@/lib/documentStorage';
 import { Upload, FileText, Image as ImageIcon, CheckCircle2, Sparkles, FileSpreadsheet, AlertCircle } from 'lucide-react';
 
 interface DocumentUploadModalProps {
@@ -23,27 +24,30 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
   isBatchFacultyMode = false,
   onSuccessToast,
 }) => {
-  const { uploadStudentDocument, batchUpdateStudents } = useKalvikkanStore();
+  const { uploadStudentDocuments, batchUpdateStudents } = useKalvikkanStore();
 
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isExtracting, setIsExtracting] = useState(false);
-  const [extractionResult, setExtractionResult] = useState<ExtractedExtractionResult | null>(null);
+  const [extractionResults, setExtractionResults] = useState<ExtractedExtractionResult[]>([]);
   const [manualText, setManualText] = useState('');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
 
-    setSelectedFile(file);
+    setSelectedFiles(files);
+    setExtractionResults([]);
+    setErrorMessage(null);
     setIsExtracting(true);
 
     try {
-      const result = await parseUploadedDocument(file);
-      setExtractionResult(result);
+      setExtractionResults(await Promise.all(files.map((file) => parseUploadedDocument(file))));
     } catch (err) {
-      console.error('Extraction error:', err);
+      console.error('Document extraction failed:', err);
+      setErrorMessage(err instanceof Error ? err.message : 'Could not process the selected files.');
     } finally {
       setIsExtracting(false);
     }
@@ -52,43 +56,59 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
   const handleManualTextExtract = async () => {
     if (!manualText.trim()) return;
     setIsExtracting(true);
-    const mockFile = new File([manualText], 'manual_transcript.txt', { type: 'text/plain' });
-    const result = await parseUploadedDocument(mockFile, manualText);
-    setExtractionResult(result);
-    setIsExtracting(false);
+    setErrorMessage(null);
+    try {
+      const mockFile = new File([manualText], 'manual_transcript.txt', { type: 'text/plain' });
+      setSelectedFiles([]);
+      setExtractionResults([await parseUploadedDocument(mockFile, manualText)]);
+    } catch (err) {
+      console.error('Transcript extraction failed:', err);
+      setErrorMessage(err instanceof Error ? err.message : 'Could not process the transcript.');
+    } finally {
+      setIsExtracting(false);
+    }
   };
 
-  const handleSubmit = () => {
-    if (!extractionResult) return;
+  const handleSubmit = async () => {
+    if (!extractionResults.length) return;
 
-    if (isBatchFacultyMode && extractionResult.parsedRows) {
-      batchUpdateStudents(extractionResult.parsedRows);
-      if (onSuccessToast) {
-        onSuccessToast(`Batch updated ${extractionResult.parsedRows.length} student records from uploaded CSV!`);
-      }
-    } else if (student) {
-      const doc: StudentDocument = {
-        id: `DOC-${Date.now().toString().slice(-4)}`,
-        studentId: student.id,
-        title: extractionResult.title,
-        category: extractionResult.category,
-        fileType: extractionResult.fileType,
-        uploadDate: new Date().toISOString().split('T')[0],
-        extractedMetrics: extractionResult.extractedMetrics,
-        status: 'Verified',
-        fileName: selectedFile?.name || 'transcript.txt',
-      };
+    try {
+      if (isBatchFacultyMode && extractionResults.some((result) => result.parsedRows)) {
+        const parsedRows = extractionResults.flatMap((result) => result.parsedRows || []);
+        batchUpdateStudents(parsedRows);
+        onSuccessToast?.(`Batch updated ${parsedRows.length} student records from uploaded file(s)!`);
+      } else if (student) {
+        const documents: StudentDocument[] = [];
+        for (const [index, result] of extractionResults.entries()) {
+          const file = selectedFiles[index];
+          const documentId = `DOC-${crypto.randomUUID()}`;
+          if (file) await saveDocumentFile(documentId, file);
+          documents.push({
+            id: documentId,
+            studentId: student.id,
+            title: result.title,
+            category: result.category,
+            fileType: result.fileType,
+            uploadDate: new Date().toISOString().split('T')[0],
+            extractedMetrics: result.extractedMetrics,
+            status: 'Verified',
+            fileName: file?.name || 'transcript.txt',
+            mimeType: file?.type || 'text/plain',
+          });
+        }
 
-      uploadStudentDocument(student.id, doc);
-      if (onSuccessToast) {
-        onSuccessToast(`Document "${extractionResult.title}" extracted & student prediction updated!`);
+        uploadStudentDocuments(student.id, documents);
+        onSuccessToast?.(`${documents.length} document(s) saved to your gallery and student prediction updated.`);
       }
+      onClose();
+      setSelectedFiles([]);
+      setExtractionResults([]);
+      setManualText('');
+      setErrorMessage(null);
+    } catch (err) {
+      console.error('Could not save uploaded documents:', err);
+      setErrorMessage(err instanceof Error ? err.message : 'Could not save the selected documents.');
     }
-
-    onClose();
-    setSelectedFile(null);
-    setExtractionResult(null);
-    setManualText('');
   };
 
   return (
@@ -112,6 +132,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
             type="file"
             id="doc-file-upload"
             accept=".png,.jpg,.jpeg,.csv,.txt"
+            multiple
             onChange={handleFileChange}
             className="hidden"
           />
@@ -120,10 +141,10 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
               <Upload className="w-6 h-6" />
             </div>
             <span className="font-bold text-sm text-slate-900 dark:text-white block">
-              {selectedFile ? selectedFile.name : 'Click to Browse File (Image, CSV, or Text)'}
+              {selectedFiles.length ? `${selectedFiles.length} file(s) selected` : 'Click to Browse File (Image, CSV, or Text)'}
             </span>
             <span className="text-xs text-slate-500 dark:text-slate-400 block mt-1">
-              Supports PNG, JPG, CSV marksheets, or TXT transcripts
+              Supports multiple PNG/JPG certificates, CSV marksheets, or TXT transcripts
             </span>
           </label>
         </div>
@@ -154,35 +175,29 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
           </div>
         )}
 
-        {extractionResult && !isExtracting && (
+        {extractionResults.length > 0 && !isExtracting && (
           <div className="p-4 rounded-xl bg-slate-900 text-white border border-slate-800 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4" /> OCR Extraction Successful
-              </span>
-              <span className="px-2 py-0.5 rounded bg-blue-900 text-blue-200 text-[10px] font-bold uppercase">
-                {extractionResult.category}
-              </span>
-            </div>
+            {extractionResults.map((result, index) => (
+              <div key={`${result.title}-${index}`} className="border-b border-slate-800 last:border-0 pb-2 last:pb-0">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4" /> {result.title}
+                  </span>
+                  <span className="px-2 py-0.5 rounded bg-blue-900 text-blue-200 text-[10px] font-bold uppercase">
+                    {result.category}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed font-mono mt-1">
+                  {result.summaryMessage}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
 
-            <p className="text-xs text-slate-300 leading-relaxed font-mono">
-              {extractionResult.summaryMessage}
-            </p>
-
-            <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-800 text-center text-xs">
-              <div className="p-2 rounded bg-slate-950">
-                <span className="text-slate-400 text-[10px] block uppercase">Extracted Att %</span>
-                <span className="font-bold text-white block mt-0.5">{extractionResult.extractedMetrics.attendance || '--'}%</span>
-              </div>
-              <div className="p-2 rounded bg-slate-950">
-                <span className="text-slate-400 text-[10px] block uppercase">Extracted Score</span>
-                <span className="font-bold text-white block mt-0.5">{extractionResult.extractedMetrics.score || '--'}%</span>
-              </div>
-              <div className="p-2 rounded bg-slate-950">
-                <span className="text-slate-400 text-[10px] block uppercase">Prediction Bonus</span>
-                <span className="font-bold text-emerald-400 block mt-0.5">+{extractionResult.extractedMetrics.certificateBonus || 2}%</span>
-              </div>
-            </div>
+        {errorMessage && (
+          <div role="alert" className="p-3 rounded-xl bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" /> {errorMessage}
           </div>
         )}
 
@@ -190,8 +205,8 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="primary" disabled={!extractionResult} onClick={handleSubmit}>
-            Apply Metrics &amp; Recalculate AI Prediction
+          <Button variant="primary" disabled={!extractionResults.length || isExtracting} onClick={handleSubmit}>
+            Save to Gallery &amp; Recalculate AI Prediction
           </Button>
         </div>
       </div>

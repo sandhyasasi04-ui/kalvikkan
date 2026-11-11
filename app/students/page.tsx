@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';
@@ -14,9 +15,10 @@ import { Toast } from '@/components/ui/Toast';
 import { Button } from '@/components/ui/Button';
 import { useKalvikkanStore } from '@/lib/store';
 import { Student, RiskLevel, Department } from '@/types';
-import { Search, Filter, SlidersHorizontal, UserPlus } from 'lucide-react';
+import { Search, Filter, SlidersHorizontal, UserPlus, Images } from 'lucide-react';
 
 export default function StudentsDirectoryPage() {
+  const router = useRouter();
   const { students, isHydrated } = useKalvikkanStore();
 
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -82,13 +84,18 @@ export default function StudentsDirectoryPage() {
               </p>
             </div>
 
-            <Button
-              variant="primary"
-              onClick={() => setAddStudentOpen(true)}
-              className="gap-2 shadow-md shadow-blue-600/20"
-            >
-              <UserPlus className="w-4 h-4" /> Add Student
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={() => router.push('/gallery')} className="gap-2">
+                <Images className="w-4 h-4" /> Student Galleries
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => setAddStudentOpen(true)}
+                className="gap-2 shadow-md shadow-blue-600/20"
+              >
+                <UserPlus className="w-4 h-4" /> Add Student
+              </Button>
+            </div>
           </div>
 
           {/* Search & Filter Controls */}

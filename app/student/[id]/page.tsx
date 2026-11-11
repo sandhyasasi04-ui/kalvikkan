@@ -29,7 +29,8 @@ import {
   ArrowLeft,
   BookOpen,
   MessageSquare,
-  ChevronRight
+  ChevronRight,
+  Images
 } from 'lucide-react';
 
 export default function StudentDetailPage() {
@@ -98,6 +99,13 @@ export default function StudentDetailPage() {
                 className="gap-1.5"
               >
                 <Sparkles className="w-4 h-4 text-indigo-600" /> Remedial Plan
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => router.push(`/gallery?studentId=${encodeURIComponent(student.id)}`)}
+                className="gap-1.5"
+              >
+                <Images className="w-4 h-4 text-blue-600" /> Achievement Gallery
               </Button>
             </div>
           </div>

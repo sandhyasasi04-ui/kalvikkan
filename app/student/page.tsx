@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { KpiCard } from '@/components/dashboard/KpiCard';
@@ -175,9 +176,17 @@ export default function StudentDashboard() {
                   <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     <FileCheck className="w-4 h-4 text-blue-600" /> My Verified Documents &amp; Certificates
                   </h4>
-                  <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 dark:bg-emerald-950 px-2 py-0.5 rounded-full">
-                    {student.documents?.length || 0} File(s)
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 dark:bg-emerald-950 px-2 py-0.5 rounded-full">
+                      {student.documents?.length || 0} File(s)
+                    </span>
+                    <Link
+                      href="/gallery"
+                      className="text-[10px] font-bold text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                    >
+                      Open gallery
+                    </Link>
+                  </div>
                 </div>
 
                 {(!student.documents || student.documents.length === 0) ? (
